@@ -1,28 +1,94 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProdutosTodos } from "@/services/api"
+import { getProdutosTodos } from "@/services/api";
+
+type Produto = {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  thumbnail: string;
+};
 
 export default function Home() {
-  const [produtos, atualizarProdutos] = useState();
+  const [produtos, atualizarProdutos] = useState<Produto[]>([]);
+  const [pesquisa, setPesquisa] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
-    getProdutosTodos().then((resultado) => {
-      atualizarProdutos(resultado.data.products);
-    })
+    getProdutosTodos()
+      .then((resultado) => {
+        atualizarProdutos(resultado.data.products);
+      })
+      .catch(() => {
+        setErro("Não foi possível carregar os produtos. Tente novamente mais tarde.");
+      })
+      .finally(() => {
+        setCarregando(false);
+      });
   }, []);
+
+  function handleBusca(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const value = new FormData(form).get("produto");
+
+    if (typeof value === "string") {
+      setPesquisa(value.trim());
+    }
+  }
+
+  function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setPesquisa(event.target.value.trim());
+  }
+
+  const produtosFiltrados = pesquisa 
+    ? produtos.filter((produto) =>
+        produto.title.toLowerCase().includes(pesquisa.toLowerCase()),
+      )
+    : produtos;
 
   return (
     <div>
       <header>
         <h1>Pesquisa de produtos</h1>
+        <form onSubmit={handleBusca}>
+          <div className="form-pesquisa">
+            <label htmlFor="produto">Nome do produto:</label>
+            <input type="text" name="produto" id="produto" value={pesquisa} onChange={handleInputChange} required />
+          </div>
+          <div className="form-pesquisa">
+            <input type="submit" />
+          </div>
+        </form>
       </header>
       <main>
-        <h1>Pesquisa de produtos</h1>       
+        <h1>Produtos</h1>
+
+        {carregando && <p>Carregando produtos...</p>}
+        {erro && <p style={{ color: "red" }}>{erro}</p>}
+
+        {!carregando && !erro && produtos.length === 0 && <p>Nenhum produto encontrado.</p>}
+
+        <div className="grid-produtos">
+          {produtosFiltrados.map((produto) => (
+            <div key={produto.id} className="card">
+              <img src={produto.thumbnail} alt={produto.title} width={200} height={140} />
+              <div className="container">
+                <h4>{produto.title}</h4>
+                <p>{produto.description}</p>
+                <p>R$ {produto.price.toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   );
 }
+
 
 
 
